@@ -1,0 +1,168 @@
+
+
+01  #include <bits/stdc++.h>
+02  using namespace std;
+03  #define N 5
+04  
+05  class TSP {
+06  private:
+07      struct CustomVertex {
+08          int vertexNum, totalCost;
+09          pair<int, int> edge;
+10          bool visited[N];
+11          vector<int> pathNodes;
+12          int reducedMat[N][N];
+13  
+14          CustomVertex() : vertexNum(0), totalCost(0), edge(-1, -1) {
+15              fill(begin(visited), end(visited), false);
+16              for (int i = 0; i < N; ++i)
+17                  fill(begin(reducedMat[i]), end(reducedMat[i]), 0);
+18          }
+19  
+20          CustomVertex(int num, int p, int matrix[N][N]) : vertexNum(num), totalCost(0), edge(p, num) {
+21              fill(begin(visited), end(visited), false);
+22              visited[num] = true;
+23              for (int i = 0; i < N; ++i)
+24                  copy(begin(matrix[i]), end(matrix[i]), begin(reducedMat[i]));
+25          }
+26  
+27          void resetPath() {
+28              pathNodes.clear();
+29              fill(begin(visited), end(visited), false);
+30          }
+31  
+32          void copyVisitedArray(const bool v[N]) {
+33              copy(v, v + N, visited);
+34              visited[vertexNum] = true;
+35          }
+36  
+37          void copyPathNodes(const vector<int>& v) {
+38              pathNodes = v;
+39          }
+40      };
+41  
+42      int reducedCost(int matrix[N][N]) {
+43          int cost = 0;
+44          for (int i = 0; i < N; ++i) {
+45              int rowMin = *min_element(begin(matrix[i]), end(matrix[i]));
+46              if (rowMin != INT_MAX) {
+47                  cost += rowMin;
+48                  for (int j = 0; j < N; ++j)
+49                      if (matrix[i][j] != INT_MAX)
+50                          matrix[i][j] -= rowMin;
+51              }
+52          }
+53          for (int j = 0; j < N; ++j) {
+54              int colMin = INT_MAX;
+55              for (int i = 0; i < N; ++i)
+56                  colMin = min(colMin, matrix[i][j]);
+57              if (colMin != INT_MAX) {
+58                  cost += colMin;
+59                  for (int i = 0; i < N; ++i)
+60                      if (matrix[i][j] != INT_MAX)
+61                          matrix[i][j] -= colMin;
+62              }
+63          }
+64          return cost;
+65      }
+66  
+67      void setInfinity(int matrix[N][N], int row, int col, const bool v[N]) {
+68          fill(begin(matrix[row]), end(matrix[row]), INT_MAX);
+69          for (int i = 0; i < N; ++i)
+70              matrix[i][col] = INT_MAX;
+71          for (int i = 0; i < N; ++i)
+72              if (v[i])
+73                  matrix[col][i] = INT_MAX;
+74      }
+75  
+76      void displayPath(const vector<int>& v, int node) {
+77          for (int i : v) cout << i + 1 << "->";
+78          cout << node + 1;
+79      }
+80  
+81      void displayMatrix(int matrix[N][N]) {
+82          for (int i = 0; i < N; ++i) {
+83              for (int j = 0; j < N; ++j) {
+84                  if (matrix[i][j] == INT_MAX)
+85                      cout << "x\t";
+86                  else
+87                      cout << matrix[i][j] << "\t";
+88              }
+89              cout << endl;
+90          }
+91      }
+92  
+93  public:
+94      void TSPsoln(int matrix[N][N], int start) {
+95          CustomVertex root(start, -1, matrix);
+96          root.totalCost = reducedCost(root.reducedMat);
+97          root.resetPath();
+98          root.visited[root.vertexNum] = true;
+99  
+100         multimap<int, CustomVertex> temp;
+101         temp.insert({root.totalCost, root});
+102 
+103         bool found = false;
+104         CustomVertex shortPath;
+105         int minCost = INT_MAX;
+106 
+107         while (!temp.empty() && !found) {
+108             auto [cost, curr] = *temp.begin();
+109             temp.erase(temp.begin());
+110             curr.pathNodes.push_back(curr.vertexNum);
+111 
+112             for (int i = 0; i < N; ++i) {
+113                 if (curr.reducedMat[curr.vertexNum][i] != INT_MAX) {
+114                     CustomVertex child(i, curr.vertexNum, curr.reducedMat);
+115                     child.copyVisitedArray(curr.visited);
+116                     child.copyPathNodes(curr.pathNodes);
+117                     setInfinity(child.reducedMat, curr.vertexNum, child.vertexNum, child.visited);
+118                 child.totalCost = curr.totalCost + curr.reducedMat[curr.vertexNum][i] + reducedCost(child.reducedMat);
+119 
+120                     // Print the path, node, cost, and reduced matrix
+121                     cout << "Path: ";
+122                     displayPath(child.pathNodes, child.vertexNum);
+123                     cout << "\nNode: " << child.vertexNum + 1 << " Cost: " << child.totalCost << endl;
+124                     displayMatrix(child.reducedMat);
+125 
+126                     temp.insert({child.totalCost, child});
+127 
+128                     if (all_of(begin(child.visited), end(child.visited), [](bool v) { return v; })) {
+129                         child.pathNodes.push_back(child.vertexNum);
+130                         if (child.totalCost < minCost) {
+131                             shortPath = child;
+132                             minCost = child.totalCost;
+133                         }
+134                         found = true;
+135                         break;
+136                     }
+137                 }
+138             }
+139         }
+140 
+141         if (found) {
+142             cout << "Shortest Path : ";
+143             for (int i : shortPath.pathNodes) cout << i + 1 << " -> ";
+144             cout << "1\nTotal cost: " << minCost << endl;
+145         } else {
+146             cout << "No valid path found!" << endl;
+147         }
+148     }
+149 };
+150 
+151 int main() {
+152     int adj[N][N] = {
+153         {INT_MAX, 20, 30, 10, 11},
+154         {15, INT_MAX, 16, 4, 2},
+155         {3, 5, INT_MAX, 2, 4},
+156         {19, 6, 18, INT_MAX, 3},
+157         {16, 4, 7, 16, INT_MAX}
+158     };
+159 
+160     TSP solver;
+161     solver.TSPsoln(adj, 0);
+162 
+163     return 0;
+164 }
+
+
